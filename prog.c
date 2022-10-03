@@ -1,50 +1,70 @@
 #include <ncurses.h>
 #include "cube.h"
-#include "cview.h"
+#include "algs.h"
+#include "tui.h"
 
-void
-setup_ncurses(void)
+#define BIND_MOVE(m, k1, k2)                        \
+	case k1: move = get_move(m, NORM_A); break; \
+	case k2: move = get_move(m, PRIM_A); break
+
+struct {
+	TUI *tui;
+	Cube *cube;
+	AlgSet *algs;
+} prog;
+
+static int run(void);
+static void setup(int argc, char *argv[]);
+static void cleanup(void);
+
+static void
+setup(int argc, char *argv[])
 {
-	initscr();
-	cbreak();
-	noecho();
-	start_color();
-	curs_set(0);
-	keypad(stdscr, 1);
-	use_default_colors();
+	prog.cube = cube_create();
+	prog.tui  = tui_create(prog.cube);
+	prog.algs = algset_create(argc, argv);
+}
+
+static int
+run(void)
+{
+	Move *move;
+	int ch;
+
+	tui_draw(prog.tui);
+	if ((ch = getch()) == KEY_F(1)) return 1;
+	switch (ch) {
+		/* keymap */
+		BIND_MOVE('U', 'j', 'f');
+		BIND_MOVE('R', 'i', 'k');
+		BIND_MOVE('L', 'd', 'e');
+		BIND_MOVE('D', 's', 'l');
+		BIND_MOVE('F', 'h', 'g');
+		BIND_MOVE('x', 't', 'n');
+		BIND_MOVE('y', ';', 'a');
+		BIND_MOVE('z', 'p', 'q');
+
+		case KEY_RESIZE: tui_reset(prog.tui); return 0;
+		default: return 0;
+	}
+	cube_apply_move(prog.cube, move);
+
+	return 0;
+}
+
+static void
+cleanup(void)
+{
+	tui_destroy(prog.tui);
+	cube_destroy(prog.cube);
+	algset_destroy(prog.algs);
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
-	CubeView *cview;
-	const char *move;
-	int ch;
-
-	setup_ncurses();
-	cview = cube_view_create();
-
-	while (1) {
-		refresh();
-		cube_view_draw(cview);
-		if ((ch = getch()) == KEY_F(1)) break;
-		switch (ch) {
-		case 'j': move = "U "; break;
-		case 'f': move = "U'"; break;
-		case 'k': move = "R "; break;
-		case 'i': move = "R'"; break;
-		case 'd': move = "L "; break;
-		case 'e': move = "L'"; break;
-		case 's': move = "D "; break;
-		case 'l': move = "D'"; break;
-		case 'h': move = "F "; break;
-		case 'g': move = "F'"; break;
-		case KEY_RESIZE: cube_view_reset(cview); clear(); continue;
-		default: continue;
-		}
-		cube_apply_move(cview->cube, str2move(move, NULL));
-	};
-
-	cube_view_destroy(cview);
-	endwin();
+	setup(argc, argv);
+	while (!run());
+	cleanup();
+	return 0;
 }

@@ -3,102 +3,111 @@
 #include "cube.h"
 #include "cview.h"
 
-#define STICKER_X 4
-#define STICKER_Y 2
+struct CubeView {
+	const Cube *cube;
+	int x, y;
+	int size_x, size_y;
+	WINDOW *board;
+	WINDOW *stickers[STICKERS * FACES];
+};
 
-#define FACE_STICKER_COUNT (STICKERS + (3 * 2))
+static void cview_newwin(CubeView *cview);
+static void cview_delwin(CubeView *cview);
 
-#define nelem(x) (sizeof(x) / sizeof(*x))
-
-static void cube_view_init(CubeView *view);
-static void cube_view_del(CubeView *view);
-
-void
-cube_view_init(CubeView *view)
-{
-	int x, y, i;
-
-	(void)y;
-	getmaxyx(stdscr, y, x);
-
-	view->size_x =      5 * STICKER_X + 6;
-	view->size_y = 2 * (3 * STICKER_Y + 3);
-	view->y      = (x - view->size_x) / 2;
-	view->x      = 0;
-
-	view->board = newwin(view->size_y, view->size_x, view->x, view->y);
-
-	box(view->board, 0, 0);
-
-	for (i = 0; i < FACE_STICKER_COUNT * 2; i++) {
-		view->stickers[i] = derwin(view->board, STICKER_Y, STICKER_X,
-		                    (i / 5) * (STICKER_Y + 1) + (i < FACE_STICKER_COUNT ? 1 : 0),
-		                    (i % 5) * (STICKER_X + 1) + 1);
-	}
-
-	for (i = 0; i < 5; i++)
-		mvwvline(view->board, 1, i * (STICKER_X + 1), ACS_VLINE, view->size_y - 2);
-
-	for (i = 0; i < 4; i++)
-		mvwhline(view->board, (i + 1) * (STICKER_Y + 1) + (i>1?STICKER_Y:0),
-		         1, ACS_HLINE, view->size_x - 2);
-
-	for (i = 0; i < 16; i++) {
-		mvwaddch(view->board, (i / 4 + 1) * (STICKER_Y + 1) + (i>7?STICKER_Y:0),
-		                      (i % 4 + 1) * (STICKER_X + 1), ACS_PLUS);
-	}
-}
+static const StickerPos CUBE_VIEW[] = {
+	{L_FACE, 0}, {U_FACE, 0}, {U_FACE, 1}, {U_FACE, 2}, {R_FACE, 2},
+	{L_FACE, 1}, {U_FACE, 3}, {U_FACE, 4}, {U_FACE, 5}, {R_FACE, 1},
+	{L_FACE, 2}, {U_FACE, 6}, {U_FACE, 7}, {U_FACE, 8}, {R_FACE, 0},
+	{L_FACE, 2}, {F_FACE, 0}, {F_FACE, 1}, {F_FACE, 2}, {R_FACE, 0},
+	{L_FACE, 5}, {F_FACE, 3}, {F_FACE, 4}, {F_FACE, 5}, {R_FACE, 3},
+	{L_FACE, 8}, {F_FACE, 6}, {F_FACE, 7}, {F_FACE, 8}, {R_FACE, 6},
+};
 
 void
-cube_view_del(CubeView *view)
+cview_newwin(CubeView *cview)
 {
 	int i;
 
-	for (i = 0; i < (int)nelem(view->stickers); i++) {
-		delwin(view->stickers[i]);
+	cview->board = newwin(CVIEW_ROWS, CVIEW_COLS, CVIEW_Y, CVIEW_X);
+	box(cview->board, 0, 0);
+
+	for (i = 0; i < 5; i++) {
+		mvwvline(cview->board,
+		         1, i * (STICKER_X + 1),
+		         ACS_VLINE, CVIEW_ROWS - 2);
 	}
-	delwin(view->board);
+
+	for (i = 0; i < 4; i++) {
+		mvwhline(cview->board,
+		         (i + 1) * (STICKER_Y + 1) + (i > 1 ? STICKER_Y : 0),
+		         1, ACS_HLINE, CVIEW_COLS - 2);
+	}
+
+	for (i = 0; i < 16; i++) {
+		mvwaddch(cview->board,
+		        (i / 4 + 1) * (STICKER_Y + 1) + (i > 7 ? STICKER_Y : 0),
+		        (i % 4 + 1) * (STICKER_X + 1), ACS_PLUS);
+	}
+
+	for (i = 0; i < CVIEW_SIZ; i++) {
+		cview->stickers[i] = derwin(cview->board,
+		        STICKER_Y, STICKER_X,
+		        (i / 5) * (STICKER_Y + 1) + (i < CVIEW_SIZ / 2 ? 1 : 0),
+		        (i % 5) * (STICKER_X + 1) + 1);
+	}
+
+	refresh();
+	wrefresh(cview->board);
 }
 
 void
-cube_view_reset(CubeView *view)
+cview_delwin(CubeView *cview)
 {
-	cube_view_del(view);
-	cube_view_init(view);
+	int i;
+
+	werase(cview->board);
+	for (i = 0; i < CVIEW_SIZ; i++) delwin(cview->stickers[i]);
+	delwin(cview->board);
+}
+
+void
+cview_reset(CubeView *cview)
+{
+	cview_delwin(cview);
+	cview_newwin(cview);
 }
 
 CubeView *
-cube_view_create(void)
+cview_create(Cube *cube)
 {
-	CubeView *view;
+	CubeView *cview;
 	int i;
 
-	view = malloc(sizeof(CubeView));
-	cube_view_init(view);
-	view->cube = cube_create();
+	cview = malloc(sizeof(CubeView));
+	cview_newwin(cview);
+	cview->cube = cube;
 
 	for (i = 0; i < FACES; i++)
 		init_pair(i + 1, colorscheme[i],  colorscheme[i]);
 
-	return view;
+	return cview;
 }
 
 void
-cube_view_destroy(CubeView *view)
+cview_destroy(CubeView *cview)
 {
-	cube_view_del(view);
-	cube_destroy(view->cube);
-	free(view);
+	cview_delwin(cview);
+	free(cview);
 }
 
 void
-cube_view_draw(CubeView *view)
+cview_draw(CubeView *cview)
 {
 	int i;
 
-	wrefresh(view->board);
-	for (i = 0; i < FACE_STICKER_COUNT * 2; i++) {
-		wbkgd(view->stickers[i], COLOR_PAIR(cube_get2(view->cube, CUBE_VIEW[i]) + 1));
-		wrefresh(view->stickers[i]);
+	for (i = 0; i < CVIEW_SIZ; i++) {
+		wbkgd(cview->stickers[i],
+		      COLOR_PAIR(cube_get2(cview->cube, CUBE_VIEW[i]) + 1));
+		wrefresh(cview->stickers[i]);
 	}
 }

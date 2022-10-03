@@ -1,0 +1,15 @@
+[diag]
+Aa:
+	x R' U R' D2 R U' R' D2 R2 x'
+	R' B' R2 D R' U' R D' R' U R' B R
+	R F R2 D' R U R' D R U' R F' R'
+	x' R2 D2 R' U' R D2 R' U R' x
+
+	x R' U R' D2 R U' R' D2 R2 x'
+	x' R' U' R U R' D' R U' R' U D R
+
+Ab:
+	x R2 D2 R U R' D2 R U' R x'
+	R' B' R U' R D R' U R D' R2' B R
+	R F R' U R' D' R U' R' D R2 F' R'
+	x' R U' R D2 R' U R D2 R2 x

@@ -3,7 +3,7 @@ CFLAGS   = -ggdb -std=c99 -pedantic -Wextra -Wall ${CPPFLAGS}
 LDFLAGS  = -lncurses
 
 BIN = prog
-SRC = cube.c cview.c prog.c
+SRC = cube.c cview.c tui.c algs.c prog.c
 OBJ = ${SRC:.c=.o}
 
 all: options ${BIN}
